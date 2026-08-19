@@ -1,0 +1,14 @@
+const $ = selector => document.querySelector(selector);
+const status = message => $('#status').textContent = message;
+const escapeHtml = value => String(value || '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+
+async function refreshDashboard() { const data = await (await fetch('/api/v1/dashboard')).json(); $('#patient-count').textContent=data.patients; $('#match-count').textContent=data.matches; $('#high-count').textContent=data.high_confidence; }
+function person(patient) { return `<div class="person">${escapeHtml(patient.name)}<small>${escapeHtml(patient.date_of_birth || 'DOB unavailable')} · ${escapeHtml(patient.source)}</small></div>`; }
+async function showMatches() { const matches = await (await fetch('/api/v1/matches')).json(); const list=$('#match-list'); $('#empty-state').hidden=matches.length>0; list.hidden=matches.length===0; list.innerHTML=matches.map(m=>`<article class="match">${person(m.patient_a)}${person(m.patient_b)}<div class="score"><span class="badge ${m.decision === 'High confidence' ? 'high':''}">${m.decision}</span><strong>${m.confidence}%</strong><small>AI match confidence</small></div><p class="explanation">${escapeHtml(m.explanation)} <b>Name ${m.name_score}% · DOB ${m.dob_score}% · Contact ${m.contact_score}% · Semantic ${m.embedding_score}%</b></p></article>`).join(''); }
+async function runResolver() { status('Analyzing records…'); $('#resolve').disabled=true; try { const data=await (await fetch('/api/v1/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({threshold:+$('#threshold').value})})).json(); status(`${data.matches} candidates found across ${data.evaluated} records.`); await refreshDashboard(); await showMatches(); } finally { $('#resolve').disabled=false; } }
+$('#threshold').addEventListener('input', e => $('#threshold-output').textContent=`${e.target.value}%`);
+$('#resolve').addEventListener('click', runResolver);
+$('#demo').addEventListener('click', async()=>{status('Loading safe synthetic demo data…'); const r=await fetch('/api/v1/demo-data',{method:'POST'}); const d=await r.json(); status(`${d.imported} Synthea-style records loaded. Run detection when ready.`); await refreshDashboard();});
+$('#csv-input').addEventListener('change', async e=>{if(!e.target.files[0])return;status('Importing CSV…');const f=new FormData();f.append('file',e.target.files[0]);const r=await fetch('/api/v1/patients/upload',{method:'POST',body:f});const d=await r.json();status(r.ok?`${d.imported} records imported. Run detection when ready.`:d.error);await refreshDashboard();e.target.value='';});
+$('#reset').addEventListener('click',async()=>{await fetch('/api/v1/reset',{method:'DELETE'});status('Workspace cleared.');await refreshDashboard();await showMatches();});
+refreshDashboard();showMatches();
