@@ -3,6 +3,7 @@ import math
 import os
 import re
 from collections import Counter
+from datetime import datetime
 from itertools import combinations
 
 from rapidfuzz.fuzz import ratio
@@ -10,6 +11,17 @@ from rapidfuzz.fuzz import ratio
 
 def normalize(value):
     return re.sub(r"[^a-z0-9]", "", (value or "").lower())
+
+
+def normalize_dob(value):
+    """Align common EHR date formats before comparing dates of birth."""
+    raw = str(value or "").strip()
+    for pattern in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(raw, pattern).strftime("%Y%m%d")
+        except ValueError:
+            continue
+    return normalize(raw)
 
 
 def _text(patient):
@@ -59,7 +71,8 @@ def ai_explanation(left, right, metrics, fallback):
 
 def score_pair(left, right):
     name = ratio(normalize(left["first_name"] + left["last_name"]), normalize(right["first_name"] + right["last_name"]))
-    dob = 100 if normalize(left.get("date_of_birth")) and normalize(left.get("date_of_birth")) == normalize(right.get("date_of_birth")) else ratio(normalize(left.get("date_of_birth")), normalize(right.get("date_of_birth")))
+    left_dob, right_dob = normalize_dob(left.get("date_of_birth")), normalize_dob(right.get("date_of_birth"))
+    dob = 100 if left_dob and left_dob == right_dob else ratio(left_dob, right_dob)
     contacts = [ratio(normalize(left.get(field)), normalize(right.get(field))) for field in ("phone", "email", "address") if left.get(field) and right.get(field)]
     contact = max(contacts, default=0)
     embedding = azure_embedding_score(left, right)
