@@ -28,6 +28,19 @@ def matches():
     return jsonify([match.to_dict() for match in DuplicateMatch.query.order_by(DuplicateMatch.confidence.desc()).all()])
 
 
+@api.post("/patients")
+def add_patient():
+    """Add a single patient from the dashboard before running the resolver."""
+    data = request.get_json(silent=True) or {}
+    if not str(data.get("first_name", "")).strip() or not str(data.get("last_name", "")).strip():
+        return jsonify({"error": "First name and last name are required."}), 400
+    allowed = {"external_id", "first_name", "last_name", "date_of_birth", "gender", "phone", "email", "address"}
+    patient = Patient(**{key: str(data.get(key, "")).strip() or None for key in allowed}, source="Manual entry")
+    db.session.add(patient)
+    db.session.commit()
+    return jsonify(patient.to_dict()), 201
+
+
 @api.post("/patients/upload")
 def upload_patients():
     file = request.files.get("file")

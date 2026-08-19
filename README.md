@@ -1,4 +1,4 @@
-# CareMatch AI — Duplicate Patient Record Resolver
+# Duplicate Patient Analyzer — AI Record Resolver
 
 A portfolio-ready Flask application that identifies likely duplicate patient records across fragmented healthcare data. It combines fuzzy demographic matching (RapidFuzz), semantic similarity (Azure OpenAI embeddings when configured), and transparent explanations for human review.
 
@@ -8,6 +8,7 @@ A portfolio-ready Flask application that identifies likely duplicate patient rec
 
 - Clean, responsive analyst dashboard for importing records and reviewing matches
 - CSV workflow powered by Pandas; accepts inconsistent name, DOB, phone, email and address formatting
+- Manual patient-entry form for a quick duplicate-detection demo
 - Weighted confidence model: name, DOB, contact details, and semantic record similarity
 - Azure OpenAI embeddings supported with a dependency-free local n-gram cosine fallback
 - Synthea-style synthetic demo records included—no real patient information
